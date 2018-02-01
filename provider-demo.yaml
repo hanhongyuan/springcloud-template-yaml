@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: provider-demo
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      ekos-app: provider-demo
+  template:
+    metadata:
+      labels:
+        ekos-app: provider-demo
+    spec:
+      containers:
+      - image: registry.ekos.local/library/provider-demo
+        name: provider-demo
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1G
+          requests:
+            cpu: 500m
+            memory: 500M
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: provider-demo
+  namespace: test
+spec:
+  ports:
+  - name: "8888"
+    port: 8888
+    protocol: TCP
+    targetPort: 8888
+  selector:
+    ekos-app: provider-demo

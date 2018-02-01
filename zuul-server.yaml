@@ -1,0 +1,42 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: zuul-server
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      ekos-app: zuul-server
+  template:
+    metadata:
+      labels:
+        ekos-app: zuul-server
+    spec:
+      containers:
+      - env:
+        - name: CONFIG_SERVICE_NAME
+          value: config-server
+        image: registry.ekos.local/library/zuul-server
+        name: zuul-server
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1G
+          requests:
+            cpu: 500m
+            memory: 500M
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-server
+  namespace: test
+spec:
+  ports:
+  - name: "7291"
+    port: 7291
+    protocol: TCP
+    targetPort: 7291
+  selector:
+    ekos-app: zuul-server
