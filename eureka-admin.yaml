@@ -13,6 +13,28 @@ spec:
       labels:
         ekos-app: eureka-admin
     spec:
+      initContainers:
+      - name: init-eureka
+        image: registry.ekos.local/library/eureka-admin
+        command:
+        - sh
+        - "-c"
+        - |
+          set -ex
+          
+          PEERS=$(nslookup eureka 2>/dev/null | grep Address | awk '{print $4}' | awk '{printf("http://%s:8761/,",$1)}')
+          DEFAULT_ZONE=${PEERS%,}
+          arr=${DEFAULT_ZONE//,/ }
+          for address in $arr; do
+            info=`curl -s -m 10 --connect-timeout 10 -I $address`
+              code=`echo $info|grep "HTTP"|awk '{print $2}'`
+              if [ "$code" == "200" ];then
+                 echo "...........................$code"
+              else
+                 echo "...........................$code"
+                 exit 1
+               fi
+          done
       containers:
       - env:
         - name: DISCOVERY_SERVICE_NAME

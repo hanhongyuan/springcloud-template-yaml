@@ -13,6 +13,49 @@ spec:
       labels:
         ekos-app: config-server
     spec:
+      initContainers:
+      - name: init-eureka
+        image: registry.ekos.local/library/config-server
+        command:
+        - sh
+        - "-c"
+        - |
+          set -ex
+          
+          PEERS=$(nslookup eureka 2>/dev/null | grep Address | awk '{print $4}' | awk '{printf("http://%s:8761/,",$1)}')
+          DEFAULT_ZONE=${PEERS%,}
+          arr=${DEFAULT_ZONE//,/ }
+          for address in $arr; do
+            info=`curl -s -m 10 --connect-timeout 10 -I $address`
+              code=`echo $info|grep "HTTP"|awk '{print $2}'`
+              if [ "$code" == "200" ];then
+                 echo "...........................$code"
+              else
+                 echo "...........................$code"
+                 exit 1
+               fi
+          done
+      - name: init-rabbitmq
+        image: registry.ekos.local/library/config-server
+        command:
+        - sh
+        - "-c"
+        - | 
+          set -ex
+          
+          PEERS=$(nslookup rabbitmq-server 2>/dev/null | grep Address | awk '{print $4}' | awk '{printf("http://%s:15672/,",$1)}')
+          DEFAULT_ZONE=${PEERS%,}
+          arr=${DEFAULT_ZONE//,/ }
+          for address in $arr; do
+              info=`curl -s -m 10 --connect-timeout 10 -I $address`
+              code=`echo $info|grep "HTTP"|awk '{print $2}'`
+              if [ "$code" == "200" ];then
+                 echo "...........................$code"
+              else
+                 echo "...........................$code"
+                 exit 1
+              fi
+          done
       containers:
       - env:
         - name: DISCOVERY_SERVICE_NAME
@@ -48,66 +91,6 @@ metadata:
   name: eureka-config
   namespace: test
 data:
-  zuul-server.yml: |
-   server:
-     port: 7291
-   eureka:
-       instance:
-           leaseExpirationDurationInSeconds: 2
-           leaseRenewalIntervalInSeconds: 1
-           preferIpAddress: true
-       client:
-           registerWithEureka: true
-           fetchRegistry: true
-           registryFetchIntervalSeconds: 3
-           serviceUrl:
-               defaultZone: http://eureka:8761/eureka/
-   spring:
-     application:
-       name: zuul-server
-     cloud:
-       loadbalancer:
-         retry:
-           enabled: true
-   ribbon:
-     MaxAutoRetries: 1
-     MaxAutoRetriesNextServer: 3
-     OkToRetryOnAllOperations: true
-     ConnectTimeout: 1500
-     ReadTimeout: 2000
-   hystrix:
-     command:
-       default:
-         execution:
-           isolation:
-             thread:
-               timeoutInMilliseconds: 1500
-  hystrix-dashboard.yml: |
-   server:
-     port: 8193
-   turbine:
-     app-config: consumer-demo
-     aggregator:
-       clusterConfig: prontera
-     cluster-name-expression: metadata['cluster']
-   eureka:
-       instance:
-           leaseExpirationDurationInSeconds: 2
-           leaseRenewalIntervalInSeconds: 1
-           preferIpAddress: true
-       client:
-           registerWithEureka: true
-           fetchRegistry: true
-           registryFetchIntervalSeconds: 3
-           serviceUrl:
-               defaultZone: http://eureka:8761/eureka/
-   spring:
-     application:
-       name: hystrix-dashboard
-     cloud:
-       loadbalancer:
-         retry:
-           enabled: true
   provider-demo.yml: |
     server:
      port: 8888
